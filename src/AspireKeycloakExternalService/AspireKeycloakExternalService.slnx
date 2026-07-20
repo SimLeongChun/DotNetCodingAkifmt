@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="AspireKeycloakExternalService.ApiService/AspireKeycloakExternalService.ApiService.csproj" />
+  <Project Path="AspireKeycloakExternalService.AppHost/AspireKeycloakExternalService.AppHost.csproj" />
+  <Project Path="AspireKeycloakExternalService.ServiceDefaults/AspireKeycloakExternalService.ServiceDefaults.csproj" />
+  <Project Path="AspireKeycloakExternalService.Web/AspireKeycloakExternalService.Web.csproj" />
+</Solution>
