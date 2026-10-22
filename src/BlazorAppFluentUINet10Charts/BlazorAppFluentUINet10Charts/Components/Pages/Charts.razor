@@ -1,0 +1,274 @@
+﻿@page "/charts"
+
+
+<PageTitle>Charts</PageTitle>
+
+
+@if (loading)
+{
+    <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Center">
+        <FluentCard Width="200px" Margin="100px">
+            <FluentText>loading...</FluentText>
+            <FluentProgressBar></FluentProgressBar>
+        </FluentCard>
+    </FluentStack>
+}
+else
+{
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="20px" Class="pt-4">
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="20px">
+            <FluentCard>
+                <FluentStack Orientation="Orientation.Vertical">
+                    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+                        <FluentText Size="TextSize.Size500">@($"Progress")</FluentText>
+                        <FluentText Size="TextSize.Size900">@($"{(int)closeRatioPercentage}%")</FluentText>
+                    </FluentStack>
+                    <FluentHorizontalBarChart ChartData="@dataHorizontalBarChart" Variant="@HorizontalBarChartVariant.SingleBar" />
+                </FluentStack>
+            </FluentCard>
+            <FluentCard>
+                <FluentStack Orientation="Orientation.Vertical">
+                    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+                        <FluentText Size="TextSize.Size500">@($"Open Issues")</FluentText>
+                        <FluentText Size="TextSize.Size900">@($"{openIssuesTotalCount}")</FluentText>
+                    </FluentStack>
+                    <FluentHorizontalBarChart ChartData="@dataHorizontalBarOpenIssuesChart" Variant="@HorizontalBarChartVariant.SingleBar" />
+                </FluentStack>
+            </FluentCard>
+            <FluentCard>
+                <FluentStack Orientation="Orientation.Vertical">
+                    <FluentStack Orientation="Orientation.Horizontal" HorizontalAlignment="HorizontalAlignment.SpaceBetween">
+                        <FluentText Size="TextSize.Size500">@($"Closed Issues")</FluentText>
+                        <FluentText Size="TextSize.Size900">@($"{closedIssuesTotalCount}")</FluentText>
+                    </FluentStack>
+                    <FluentHorizontalBarChart ChartData="@dataHorizontalBarClosedIssuesChart" Variant="@HorizontalBarChartVariant.SingleBar" />
+                </FluentStack>
+            </FluentCard>
+        </FluentStack>
+
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="20px">
+            <FluentCard Height="430px">
+                <FluentTabs>
+                    <FluentTab Id="default-tab11" Header="All Issues" IconStart="@(new Icons.Regular.Size16.Chat())">
+                        <FluentAreaChart @ref="fluentAreaChart" ChartData="dataAllIssuesByDateAreaChart" Height="300px" TickFormat="%m/%d" />
+                    </FluentTab>
+                </FluentTabs>
+            </FluentCard>
+            <FluentCard Height="430px">
+                <FluentTabs>
+                    <FluentTab Id="default-tab21" Header="Top Contributors" IconStart="@(new Icons.Regular.Size16.Person())">
+                        <FluentDonutChart ChartData="dataTopContributorsDonutChart" Height="300px" Width="100%"
+                                          ValueInsideDonut="@dataTopContributorsDonutChartTotalItemCount.ToString()"
+                                          ShowLabelsInPercent="true"
+                                          InnerRadius="55" />
+                    </FluentTab>
+                    <FluentTab Id="default-tab22" Header="Top Labels" IconStart="@(new Icons.Regular.Size16.SlideText())">
+                        <FluentDonutChart ChartData="dataTopLabelsDonutChart" Height="300px" Width="100%"
+                                          ValueInsideDonut="@dataTopLabelsDonutChartTotalItemCount.ToString()"
+                                          ShowLabelsInPercent="true"
+                                          InnerRadius="55" />
+                    </FluentTab>
+                </FluentTabs>
+            </FluentCard>
+        </FluentStack>
+
+        <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="20px">
+            <FluentCard Height="430px">
+                <FluentDataGrid Items="@allIssuesOrderByDate" Pagination="pagination" ResizableColumns=true>
+                    <TemplateColumn Title="State" Context="issue" Align="DataGridCellAlignment.Center" Width="100px">
+                        <FluentBadge Color=@(issue.State == IssueState.Open ? BadgeColor.Success : BadgeColor.Danger) Content="@issue.State.ToString()" />
+                    </TemplateColumn>
+                    <PropertyColumn Property="@(c => c.Title)" Sortable="true" Align="DataGridCellAlignment.Start" />
+                    <TemplateColumn Title="Labels" Context="issue" Align="DataGridCellAlignment.Center">
+                        @foreach (var label in issue.Labels)
+                        {
+                            <FluentBadge Style=@($"background-color: #{label.Color}")>@Regex.Replace(label.Name, ":\\w+:", "")</FluentBadge>
+                        }
+                    </TemplateColumn>
+                    <TemplateColumn Title="User" Context="issue" Align="DataGridCellAlignment.Center">
+                        <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.Center">
+                            <img Style="width: 20px; height: 20px; border-radius: 50%; margin-inline-end: 8px; border: 1px solid #cccccc;" src=@issue.User.AvatarUrl />
+                            <FluentText>@issue.User.Login</FluentText>
+                        </FluentStack>
+                    </TemplateColumn>
+                </FluentDataGrid>
+                <style>
+                                .fluent-paginator > .paginator-nav {
+                                    max-height: 30px;
+                                }
+                </style>
+
+                <FluentPaginator State="@pagination" />
+            </FluentCard>
+        </FluentStack>
+
+    </FluentStack>
+}
+
+
+
+@code {
+    bool loading = true;
+    FluentAreaChart fluentAreaChart;
+    double closeRatioPercentage = 0;
+    IReadOnlyList<HorizontalBarChartSeries> dataHorizontalBarChart;
+    int openIssuesTotalCount;
+    IReadOnlyList<HorizontalBarChartSeries> dataHorizontalBarOpenIssuesChart;
+    int closedIssuesTotalCount;
+    IReadOnlyList<HorizontalBarChartSeries> dataHorizontalBarClosedIssuesChart;
+
+    IReadOnlyList<AreaChartSeries> dataAllIssuesByDateAreaChart;
+    IReadOnlyList<DonutDataPoint> dataTopContributorsDonutChart;
+    int dataTopContributorsDonutChartTotalItemCount;
+    IReadOnlyList<DonutDataPoint> dataTopLabelsDonutChart;
+    int dataTopLabelsDonutChartTotalItemCount;
+
+    IQueryable<Issue>? allIssuesOrderByDate;
+    PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var issues = await GitHubService.GetIssues(DateTime.Now);
+                allIssuesOrderByDate = issues.OrderByDescending(issue => issue.CreatedAt).AsQueryable();
+
+                var openIssues = issues.Where(issue => issue.State == IssueState.Open);
+                openIssuesTotalCount = openIssues.Count();
+
+                var closedIssues = issues.Where(issue => issue.State == IssueState.Closed);
+                closedIssuesTotalCount = closedIssues.Count();
+
+                var closeRatio = closedIssues.Count() / (double)issues.Count();
+                closeRatioPercentage = closeRatio * 100;
+
+                dataHorizontalBarChart = new List<HorizontalBarChartSeries>
+                {
+                    new HorizontalBarChartSeries
+                    {
+                        ChartSeriesTitle = "Progress",
+                        ChartData = new List<HorizontalBarChartDataPoint>
+                        {
+                            new HorizontalBarChartDataPoint { Legend = "Progress", Data = closedIssues.Count(), Total = issues.Count(), Color = DataVizPalette.Color1 }
+                        }
+                    }
+                };
+
+                dataHorizontalBarOpenIssuesChart = new List<HorizontalBarChartSeries>
+                {
+                    new HorizontalBarChartSeries
+                    {
+                        ChartSeriesTitle = "Open Issues",
+                        ChartData = new List<HorizontalBarChartDataPoint>
+                        {
+                            new HorizontalBarChartDataPoint { Legend = "Open Issues", Data = openIssues.Count(), Total = issues.Count(), Color = DataVizPalette.Color3 }
+                        }
+                    }
+                };
+
+                dataHorizontalBarClosedIssuesChart = new List<HorizontalBarChartSeries>
+                {
+                    new HorizontalBarChartSeries
+                    {
+                        ChartSeriesTitle = "Open Issues",
+                        ChartData = new List<HorizontalBarChartDataPoint>
+                        {
+                            new HorizontalBarChartDataPoint { Legend = "Closed Issues", Data = closedIssues.Count(), Total = issues.Count(), Color = DataVizPalette.Color2 }
+                        }
+                    }
+                };
+
+
+
+
+                var openIssuesByDate = openIssues.GroupBy(issue => new
+                {
+                    Year = ISOWeek.GetYear(issue.CreatedAt.Date),
+                    WeekNum = ISOWeek.GetWeekOfYear(issue.CreatedAt.Date)
+                }).Select(group => new
+                {
+                    WeekNum = group.Key.WeekNum,
+                    WeekStr = ISOWeek.ToDateTime(group.Key.Year, group.Key.WeekNum, DayOfWeek.Monday).ToString("MM-dd"),
+                    Week = ISOWeek.ToDateTime(group.Key.Year, group.Key.WeekNum, DayOfWeek.Monday),
+                    Count = group.Count()
+                });
+
+                var closedIssuesByDate = closedIssues.GroupBy(issue => new
+                {
+                    Year = ISOWeek.GetYear(issue.ClosedAt.Value.Date),
+                    WeekNum = ISOWeek.GetWeekOfYear(issue.ClosedAt.Value.Date)
+                }).Select(group => new
+                {
+                    WeekNum = group.Key.WeekNum,
+                    WeekStr = ISOWeek.ToDateTime(group.Key.Year, group.Key.WeekNum, DayOfWeek.Monday).ToString("MM-dd"),
+                    Week = ISOWeek.ToDateTime(group.Key.Year, group.Key.WeekNum, DayOfWeek.Monday),
+                    Count = group.Count(),
+                });
+                var chartDataOpenIssuesByDate = new List<AreaChartDataPoint>();
+                foreach (var item in openIssuesByDate)
+                {
+                    chartDataOpenIssuesByDate.Add(new AreaChartDataPoint { X = item.Week, Y = item.Count });
+                }
+                var openIssuesByDateAreaChartSeries = new AreaChartSeries()
+                {
+                    Legend = "Open Issues",
+                    ChartData = chartDataOpenIssuesByDate
+                };
+                var chartDataClosedIssuesByDate = new List<AreaChartDataPoint>();
+                foreach (var item in closedIssuesByDate)
+                {
+                    chartDataClosedIssuesByDate.Add(new AreaChartDataPoint { X = item.Week, Y = item.Count });
+                }
+                var closedIssuesByDateAreaChartSeries = new AreaChartSeries()
+                {
+                    Legend = "Closed Issues",
+                    ChartData = chartDataClosedIssuesByDate
+                };
+                dataAllIssuesByDateAreaChart = new List<AreaChartSeries>
+                {
+                    closedIssuesByDateAreaChartSeries,
+                    openIssuesByDateAreaChartSeries
+                };
+
+                var openByGroups = issues.GroupBy(issue => issue.User.Login)
+                                    .Select(group => new { Name = group.Key, Count = group.Count() })
+                                    .OrderByDescending(group => group.Count)
+                                    .Take(7);
+                var dataDonutDataPoint = new List<DonutDataPoint>();
+                foreach (var item in openByGroups)
+                {
+                    var donutDataPoint = new DonutDataPoint { Legend = item.Name, Data = item.Count };
+                    dataDonutDataPoint.Add(donutDataPoint);
+                }
+                dataTopContributorsDonutChart = dataDonutDataPoint;
+                dataTopContributorsDonutChartTotalItemCount = openByGroups.Sum(x => x.Count);
+
+                var labelGroups = issues.SelectMany(issue => issue.Labels)
+                                    .GroupBy(label => new { Name = label.Name, Color = label.Color })
+                                    .Select(group => new { Label = Regex.Replace(group.Key.Name, ":\\w+:", ""), Color = $"#{group.Key.Color}", Count = group.Count() })
+                                    .OrderByDescending(group => group.Count)
+                                    .Take(5);
+                var dataLabelGroupsDonutDataPoint = new List<DonutDataPoint>();
+                foreach (var item in labelGroups)
+                {
+                    var donutDataPoint = new DonutDataPoint { Legend = item.Label, Data = item.Count };
+                    dataLabelGroupsDonutDataPoint.Add(donutDataPoint);
+                }
+                dataTopLabelsDonutChart = dataLabelGroupsDonutDataPoint;
+                dataTopLabelsDonutChartTotalItemCount = labelGroups.Sum(x => x.Count);
+
+            }
+            catch (Exception ex)
+            {
+                var error = ex.Message;
+            }
+
+            loading = false;
+
+            StateHasChanged();
+        }
+    }
+
+}
